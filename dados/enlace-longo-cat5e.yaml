@@ -1,0 +1,12 @@
+# Enlace que estoura a margem: Cat5e a 88 m, com divisor.
+# Em 100 MHz o orcamento passa de 20,0 dB, o limite da categoria.
+# Link that exceeds the margin: Cat5e at 88 m, with a splitter.
+
+categoria: "5e"
+comprimento_canal_m: 88.0
+patch_cords: 2
+conectores: 2
+patch_panels: 1
+divisor: true
+
+frequencias: [100]

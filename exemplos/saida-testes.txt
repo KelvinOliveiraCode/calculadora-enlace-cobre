@@ -1,0 +1,18 @@
+# Saida real da validacao
+# Real output of the validation command
+#
+# Comando / command: python -m pytest tests/ -v
+# Ambiente / environment: Windows, Python 3.14, pytest 9.1
+# Caminhos de maquina mascarados / machine paths masked
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: <repo>
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collected 72 items
+
+tests\test_cli.py .......................                                [ 31%]
+tests\test_orcamento.py ............................                     [ 70%]
+tests\test_perdas.py .....................                               [100%]
+
+============================= 72 passed in 0.45s ==============================

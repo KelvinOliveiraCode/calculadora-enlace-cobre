@@ -1,0 +1,19 @@
+# Enlace de exemplo: dois switchs de acesso, um patch panel, Cat6.
+# 45 m de cabo horizontal - comprimento tipico de uma estacao de trabalho.
+#
+# Sobre o modelo de perda: o limite de inserciao da ISO/IEC 11801 (20,7 dB em
+# 100 MHz para Cat6) vale para o CANAL INTEIRO, ja incluindo conectores e
+# patch panel. Por isso esta ferramenta soma a perda do cabo a perda dos
+# componentes e compara o total com o limite do canal. Ver docs/tabela-de-perdas.md.
+#
+# Example link: two access switches, one patch panel, Cat6.
+
+categoria: "6"
+comprimento_canal_m: 45.0
+patch_cords: 2
+conectores: 2
+patch_panels: 1
+divisor: false
+
+# Frequencias avaliadas. Vazio = todas as da categoria.
+frequencias: [100, 250]
