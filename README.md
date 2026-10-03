@@ -44,7 +44,8 @@ conferir, e declarar o que o modelo **nao** cobre.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
+pip install -e .
+# instala o pacote local para o python -m <pacote>$nl
 # 2. Validar
 python -m pytest tests/ -v
 
@@ -154,7 +155,8 @@ it, and stating plainly what the model does **not** cover.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
+pip install -e .
+# instala o pacote local para o python -m <pacote>$nl
 # 2. Validate
 python -m pytest tests/ -v
 
@@ -186,10 +188,12 @@ VEREDITO: REPROVADO
 Other commands:
 
 ```powershell
-python -m caboclink materials                 # list categories and components
-python -m caboclink inspect 6A                # loss table for one category
-python -m caboclink budget dados/exemplo-enlace.yaml --report examples/laudo-exemplo.md
-python -m caboclink budget dados/exemplo-enlace.yaml --margin 12   # stricter warning
+# os subcomandos e as flags sao os mesmos da secao PT-BR: a CLI nao tem
+# apelido em ingles, para nao existir dois nomes para a mesma acao
+python -m caboclink materiais                 # lista categorias e componentes
+python -m caboclink inspecionar 6A            # tabela de perdas de uma categoria
+python -m caboclink orcamento dados/exemplo-enlace.yaml --laudo examples/laudo-exemplo.md
+python -m caboclink orcamento dados/exemplo-enlace.yaml --margem 12   # ressalva mais dura
 ```
 
 The generated report includes the manual check:
