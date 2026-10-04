@@ -192,7 +192,7 @@ Other commands:
 # apelido em ingles, para nao existir dois nomes para a mesma acao
 python -m caboclink materiais                 # lista categorias e componentes
 python -m caboclink inspecionar 6A            # tabela de perdas de uma categoria
-python -m caboclink orcamento dados/exemplo-enlace.yaml --laudo examples/laudo-exemplo.md
+python -m caboclink orcamento dados/exemplo-enlace.yaml --laudo exemplos/laudo-exemplo.md
 python -m caboclink orcamento dados/exemplo-enlace.yaml --margem 12   # ressalva mais dura
 ```
 
