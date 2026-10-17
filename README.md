@@ -2,59 +2,70 @@
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/tests-72%20passing-brightgreen?style=flat-square" alt="Tests">
-  <img src="https://img.shields.io/badge/coverage-99%25-brightgreen?style=flat-square" alt="Coverage">
-  <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/platform-Windows-blue?style=flat-square" alt="Windows">
-  <img src="https://img.shields.io/badge/deps-PyYAML%20only-blue?style=flat-square" alt="Deps">
+  <img src="https://img.shields.io/badge/testes-72%20passing-brightgreen?style=flat-square" alt="Testes">
+  <img src="https://img.shields.io/badge/cobertura-97%25-brightgreen?style=flat-square" alt="Cobertura">
+  <img src="https://img.shields.io/badge/licenca-MIT-yellow?style=flat-square" alt="Licenca">
 </p>
 
 # calculadora-enlace-cobre
 
-**Orcamento de perda e laudo de certificacao para enlace de cabo de cobre, antes de puxar o cabo.**
+**Orçamento de perda de inserção e laudo de certificação para enlace de cabeamento estruturado em cobre, feito para rodar antes de puxar o cabo.**
 
 </div>
 
 ---
 
-## PT-BR
+## Problema / Por que existe
 
-### O que e
+Perda de inserção calculada errada é a causa mais comum de link instável após a instalação. O limite da ISO/IEC 11801 vale para o canal inteiro — cabo horizontal, conectores, patch panel e patch cords — e quase toda planilha compara apenas o cabo contra o limite. O resultado é um enlace que "aprova" no papel e falha em campo, depois de puxar o cabo e subir no teto.
 
-CLI que soma a perda de insercao de um enlace de cabeamento estruturado - cabo
-horizontal, patch cords, conectores, patch panel e divisor - compara o total com
-o limite da categoria e emite um laudo com a conta aberta para conferencia
-manual. Nao precisa de equipamento, nem de rede, nem de dinheiro.
+O projeto nasceu vendo esse cálculo feito de cabeça em planejamento de infraestrutura. O valor da ferramenta não está no número final: está em mostrar a conta aberta para que qualquer pessoa confira à mão, e em declarar explicitamente o que o modelo não cobre.
 
-### Por que foi feito
+## O que faz
 
-Perda de insercao mal calculada e a causa numero um de link instavel depois de
-instalado. O limite da ISO/IEC 11801 vale para o **canal inteiro**, com os
-componentes dentro - e a planilha quase sempre compara so o cabo com o limite.
-O resultado e um enlace que "passa" na teoria e falha em campo, depois de
-puxar 88 m de cabo e subir no teto.
+A CLI `caboclink` lê um YAML que descreve o enlace (categoria, comprimento do canal horizontal e quantidades de patch cords, conectores, patch panels e divisor opcional) e:
 
-Enquanto planejava infraestrutura, eu via esse calculo ser feito de memoria. O
-valor do projeto nao esta na soma: esta em mostrar a conta, deixar a pessoa
-conferir, e declarar o que o modelo **nao** cobre.
+1. Soma a perda do cabo (escala linear com o comprimento) com a perda de cada componente, por frequência.
+2. Compara o total com o limite da categoria em cada frequência avaliada (100 MHz, 250 MHz e 500 MHz, segundo a categoria).
+3. Classifica: APROVADO, APROVADO COM RESSALVA (margem menor que 1,5 dB), REPROVADO (orçamento acima do limite ou limites físicos excedidos) ou INVIAVEL (frequência acima da categoria).
+4. Emite, opcionalmente, um laudo Markdown com a conta aberta (cabo + componentes = total, contra o limite) e os pisos NEXT/PS-NEXT da categoria como referência.
 
-### Como rodar
+Códigos de saída: 0 aprovado ou ressalva, 1 reprovado ou inviável, 2 erro de entrada (arquivo inexistente ou inválido).
+
+## Stack
+
+- Python 3.10 ou superior
+- PyYAML 6.0 ou superior (única dependência de runtime)
+- pytest e pytest-cov (dev)
+- Executa offline, sem dependência de rede ou de equipamento de certificação
+
+## Como funciona
+
+- Perda do cabo: valor da tabela da categoria multiplicado por `comprimento / 100`. Exemplo: Cat6 a 45 m em 100 MHz = 20,70 × 0,45 = 9,31 dB.
+- Componentes (patch cord, conector, patch panel, divisor) somam o valor fixo da tabela por frequência, independentemente do comprimento.
+- Limites físicos são verificados antes de qualquer conta: canal acima de 90 m reprova; enlace total (canal + 2 m por patch cord + 0,3 m por conector) acima de 100 m reprova.
+- Frequência acima da categoria retorna INVIAVEL, não REPROVADO: sinal inválido não é o mesmo que perda alta.
+- Margem = limite menos orçamento. Margem negativa reprova; margem positiva abaixo de 1,5 dB vira APROVADO COM RESSALVA.
+- NEXT e PS-NEXT são pisos de acoplamento, não perdas: aparecem apenas como referência no laudo, nunca somados ao orçamento de perda.
+- Determinístico: mesma entrada produz sempre a mesma saída.
+
+## Como rodar
 
 ```powershell
 # 1. Instalar
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 pip install -e .
-# instala o pacote local para o python -m <pacote>$nl
-# 2. Validar
-python -m pytest tests/ -v
 
-# 3. Executar
+# 2. Validar
+python -m pytest tests/ -q
+
+# 3. Executar (enlace válido: Cat6, 45 m, 100 e 250 MHz)
 python -m caboclink orcamento dados/exemplo-enlace.yaml
 ```
 
-Saida real:
+Saída real:
 
 ```
   FREQ  ORCAMENTO    LIMITE    MARGEM  SITUACAO
@@ -65,7 +76,11 @@ Saida real:
 VEREDITO: APROVADO
 ```
 
-Enlace reprovado (Cat5e a 88 m com divisor), codigo de saida 1:
+Enlace reprovado (Cat5e a 88 m com divisor), código de saída 1:
+
+```powershell
+python -m caboclink orcamento dados/enlace-longo-cat5e.yaml
+```
 
 ```
   FREQ  ORCAMENTO    LIMITE    MARGEM  SITUACAO
@@ -79,193 +94,54 @@ Outros comandos:
 
 ```powershell
 python -m caboclink materiais                  # lista categorias e componentes
-python -m caboclink inspecionar 6A             # tabela de perdas de uma categoria
+python -m caboclink inspecionar 6A             # tabela de perdas da categoria
 python -m caboclink orcamento dados/exemplo-enlace.yaml --laudo exemplos/laudo-exemplo.md
-python -m caboclink orcamento dados/exemplo-enlace.yaml --margem 12   # ressalva mais dura
+python -m caboclink orcamento dados/exemplo-enlace.yaml --margem 12   # exige folga de 12 dB
 ```
 
-O laudo gerado inclui a conferencia manual:
+O laudo inclui a seção "Comprovacao manual", com uma linha por frequência mostrando cabo, componentes, total, limite e margem.
 
-```
-- **100 MHz**: cabo 9.31 dB + componentes 5.60 dB = 14.91 dB, contra limite de 20.70 dB. Margem 5.79 dB.
-- **250 MHz**: cabo 11.97 dB + componentes 7.50 dB = 19.47 dB, contra limite de 26.60 dB. Margem 7.13 dB.
-```
-
-### O que aprendi
-
-- **O limite da norma e do canal, nao do cabo.** Essa distincao, sozinha, muda a
-  conta inteira. Somar componentes ao cabo e o que separa um orcamento correto
-  de um que aprova um enlace que vai falhar. Ver `docs/tabela-de-perdas.md`.
-- **Perda e teto, NEXT e PS-NEXT sao piso.** Sinal demais e ruim; acoplamento
-  demais e o oposto, tambem ruim. Confundir as duas direcoes reprova enlace
-  bom. Descobri isso escrevendo o gerenciador de veredito: as duas direcoes
-  cabem na mesma variavel, e o bug aparecia como "reprovou um Cat6A de 30 m".
-- **Frequencia acima da categoria nao e perda alta, e sinal invalido.** Pedir
-  500 MHz em Cat5e devolve `INVIAVEL`, nao `REPROVADO`. Misturar os dois faz o
-  relatorio sugerir trocar patch cord quando o problema e o cabo.
-- **Margem minima evita surpresa de campo.** Um enlace que passa com 0,4 dB de
-  folga falha quando o ambiente esquenta. O veredito `APROVADO COM RESSALVA`
-  existe para esse caso - e ele ainda aprova, porque a obra precisa terminar.
-- **A conta impressa vale mais que o veredito.** Quem vai repassar o valor na
-  planilha precisa poder conferir. Por isso o laudo traz cabo, componentes e
-  soma explicitados, e o `docs/` traz a conta a mao do mesmo exemplo.
-
-### Limitacoes
-
-- **Nao calcula NEXT nem PS-NEXT.** Mostra o piso da norma por frequencia como
-  contexto, mas nao estima acoplamento - isso exigiria modelo de ICR dependente
-  de geometria de par que a ferramenta nao tem.
-- **Perda escala linear com o comprimento.** Aceitavel em baixa frequencia,
-  acelera perto do limite da categoria.
-- **Nao corrige temperatura, curvatura, grampeamento nem emenda.** Cabo prensado
-  em canaleta pode perder mais que um divisor inteiro, e nada aqui enxerga isso.
-- **E uma calculadora de bancada, nao um certificador.** Se o laudo reprovar,
-  meca. Se aprovar com ressalva, meca antes de passar o cabo.
-
-### Licenca
-
-MIT. Ver [LICENSE](LICENSE).
-
----
-
-## EN
-
-### What it is
-
-A CLI that sums the insertion loss of a structured cabling link - horizontal
-cable, patch cords, connectors, patch panel and splitter - compares the total
-against the category limit, and emits a report with the arithmetic left open for
-manual checking. No equipment, no network, no cost.
-
-### Why it was built
-
-Miscalculated insertion loss is the number one cause of an unstable link after
-installation. The ISO/IEC 11801 limit applies to the **whole channel**, with the
-components included - and a spreadsheet almost always compares the cable alone
-against the limit. The result is a link that "passes" on paper and fails in the
-field, after 88 m of cable is pulled and someone climbs the ceiling.
-
-While planning infrastructure I watched that calculation get done from memory.
-The value here is not the sum: it is showing the work, letting a person check
-it, and stating plainly what the model does **not** cover.
-
-### How to run
-
-```powershell
-# 1. Install
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pip install -e .
-# instala o pacote local para o python -m <pacote>$nl
-# 2. Validate
-python -m pytest tests/ -v
-
-# 3. Run
-python -m caboclink orcamento dados/exemplo-enlace.yaml
-```
-
-Real output:
-
-```
-  FREQ  ORCAMENTO    LIMITE    MARGEM  SITUACAO
------- ---------- --------- ---------  ----------
-   100      14.91     20.70      5.79  APROVADO
-   250      19.47     26.60      7.13  APROVADO
-
-VEREDITO: APROVADO
-```
-
-Failing link (Cat5e at 88 m with a splitter), exit code 1:
-
-```
-  FREQ  ORCAMENTO    LIMITE    MARGEM  SITUACAO
------- ---------- --------- ---------  ----------
-   100      24.60     20.00     -4.60  REPROVADO
-
-VEREDITO: REPROVADO
-```
-
-Other commands:
-
-```powershell
-# os subcomandos e as flags sao os mesmos da secao PT-BR: a CLI nao tem
-# apelido em ingles, para nao existir dois nomes para a mesma acao
-python -m caboclink materiais                 # lista categorias e componentes
-python -m caboclink inspecionar 6A            # tabela de perdas de uma categoria
-python -m caboclink orcamento dados/exemplo-enlace.yaml --laudo exemplos/laudo-exemplo.md
-python -m caboclink orcamento dados/exemplo-enlace.yaml --margem 12   # ressalva mais dura
-```
-
-The generated report includes the manual check:
-
-```
-- **100 MHz**: cable 9.31 dB + components 5.60 dB = 14.91 dB, against a 20.70 dB limit. Margin 5.79 dB.
-- **250 MHz**: cable 11.97 dB + components 7.50 dB = 19.47 dB, against a 26.60 dB limit. Margin 7.13 dB.
-```
-
-### What I learned
-
-- **The standard limit belongs to the channel, not the cable.** That one
-  distinction changes the whole calculation. Summing components into the cable is
-  what separates a correct budget from one that approves a link that will fail.
-  See `docs/tabela-de-perdas.md`.
-- **Loss is a ceiling; NEXT and PS-NEXT are floors.** Losing signal is too
-  little; bad coupling is too much. Mixing the directions makes you reject a
-  good link. I hit this while writing the verdict handler: both directions fit
-  in one variable, and the bug shows up as "rejected a 30 m Cat6A link".
-- **A frequency above the category is not high loss, it is an invalid signal.**
-  Asking for 500 MHz on Cat5e returns `INVIAVEL`, not `REPROVADO`. Merging the
-  two makes the report suggest swapping a patch cord when the problem is the
-  cable.
-- **A minimum margin prevents field surprises.** A link passing with 0.4 dB of
-  headroom fails once the room warms up. The `APROVADO COM RESSALVA` verdict
-  exists for that case - and it still passes, because the job has to get done.
-- **The printed arithmetic is worth more than the verdict.** Whoever forwards the
-  number into the spreadsheet needs to be able to check it. So the report spells
-  out cable, components and sum, and `docs/` carries the hand calculation of the
-  very same example.
-
-### Limitations
-
-- **Does not compute NEXT or PS-NEXT.** It shows the standard floor per frequency
-  as context, but it does not estimate coupling - that would need an ICR model
-  depending on pair geometry this tool does not have.
-- **Loss scales linearly with length.** Acceptable at low frequency, it
-  accelerates near the category limit.
-- **No temperature, bend, staple or splice correction.** A cable crushed in a
-  trunking can lose more than a whole splitter, and nothing here sees that.
-- **This is a bench calculator, not a certifier.** If the report rejects,
-  measure. If it passes with a warning, measure before you pull the cable.
-
-### License
-
-MIT. See [LICENSE](LICENSE).
-
----
-
-## Estrutura / Structure
+## Estrutura do projeto
 
 ```
 src/caboclink/
-  perdas.py         tabelas de perda por categoria e frequencia
-  orcamento.py      soma, veredito e margens
-  certificacao.py   laudo em Markdown
-  cargador.py       leitura de YAML
-  cli.py            interface de linha de comando
-dados/              materiais.yaml e enlaces de exemplo
-docs/               tabela de perdas, leitura de ficha tecnica
-exemplos/           saidas reais geradas pela ferramenta
-tests/              72 testes
+  __main__.py      ponto de entrada (`python -m caboclink`)
+  cli.py           parser de argumentos e subcomandos (orcamento, materiais, inspecionar)
+  cargador.py      leitura de YAML de enlace e catalogo de materiais
+  perdas.py        tabelas de perda por categoria e frequencia, limites fisicos, pisos NEXT/PS-NEXT
+  orcamento.py     modelos Enlace e Resultado, funcao orcar() e regras de veredito
+  certificacao.py  geracao do laudo Markdown
+dados/             catalogo de materiais (materiais.yaml) e enlaces de exemplo
+docs/              tabela de perdas e guia de leitura de ficha tecnica
+exemplos/          saidas reais geradas pela ferramenta
+tests/             72 testes
+pyproject.toml     configuracao do pacote (setuptools, pytest)
+requirements.txt   dependencias (PyYAML, pytest, pytest-cov)
+LICENSE            MIT
+README.md
 ```
 
-## Licenca / License
+## Trade-offs e decisoes
 
-MIT &mdash; [LICENSE](LICENSE)
+- Perda escala linear com o comprimento: simples e previsível, aceitável em baixa frequência; acelera perto do limite da categoria, e a ferramenta não modela efeito de pele.
+- Limites físicos são verificados antes de qualquer conta: não se inventa orçamento para um enlace fisicamente impossível.
+- INVIAVEL separado de REPROVADO: frequência acima da categoria é sinal inválido, não perda alta; misturar os dois leva a trocar patch cord quando o problema é a categoria.
+- Margem mínima de 1,5 dB por padrão: um enlace que passa raspando falha quando o ambiente esquenta. APROVADO COM RESSALVA ainda aprova, porque a obra precisa terminar.
+- NEXT e PS-NEXT aparecem apenas como contexto: acoplamento depende da geometria do par, que o modelo não tem, e nunca se soma à perda de inserção (perda é teto, acoplamento é piso, direções opostas).
+- A conta impressa vale mais que o veredito: quem lança o número na planilha precisa conferir cabo, componentes e soma explicitados.
 
----
+## Limitacoes conhecidas
 
-<div align="center">
-  <sub>Por <a href="https://github.com/KelvinOliveiraCode">Kelvin Oliveira</a> &middot;
-  <a href="https://kelvinoliveiracode.github.io/portfolio/">portfolio</a></sub>
-</div>
+- Não calcula NEXT nem PS-NEXT; mostra apenas o piso da tabela por frequência como referência. Estimar acoplamento exigiria um modelo de ICR dependente da geometria do par, que a ferramenta não tem.
+- Perda escala linear com o comprimento.
+- Não corrige temperatura, curvatura, grampeamento nem emenda. Um cabo prensado em canaleta pode perder mais que um divisor inteiro, e nada aqui enxerga isso.
+- É calculadora de bancada, não certificador: se o laudo reprovar, meça. Se aprovar com ressalva, meça antes de puxar o cabo.
+- Os valores de componentes vêm de um catálogo interno baseado em faixas de norma, não de medições de equipamento real.
+
+## Licenca
+
+MIT. Ver [LICENSE](LICENSE).
+
+## Autor
+
+Kelvin Oliveira — [GitHub](https://github.com/KelvinOliveiraCode) · [portfolio](https://kelvinoliveiracode.github.io/portfolio/)
